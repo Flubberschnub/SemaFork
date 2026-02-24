@@ -1,0 +1,1 @@
+ALTER TABLE party_member ADD UNIQUE (party_id, member_name);
