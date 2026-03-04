@@ -1,0 +1,2 @@
+ALTER TABLE party
+    ADD status VARCHAR NOT NULL DEFAULT 'OPEN';
