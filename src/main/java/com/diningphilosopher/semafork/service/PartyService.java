@@ -6,6 +6,9 @@ import com.diningphilosopher.semafork.dto.party.JoinPartyRequest;
 import com.diningphilosopher.semafork.dto.party.MemberResponse;
 import com.diningphilosopher.semafork.dto.party.PartyResponse;
 import com.diningphilosopher.semafork.entity.*;
+import com.diningphilosopher.semafork.exception.BadRequestException;
+import com.diningphilosopher.semafork.exception.ConflictException;
+import com.diningphilosopher.semafork.exception.NotFoundException;
 import com.diningphilosopher.semafork.repository.PartyMemberRepository;
 import com.diningphilosopher.semafork.repository.PartyRepository;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -34,9 +37,9 @@ public class PartyService {
 
     @Transactional
     public MemberResponse joinParty(long partyId, JoinPartyRequest request) {
-        Party party = partyRepository.findById(partyId).orElseThrow(() -> new IllegalArgumentException("Party not found"));
+        Party party = partyRepository.findById(partyId).orElseThrow(() -> new NotFoundException("Party not found: " + partyId));
         if (party.getStatus() != PartyStatus.OPEN) {
-            throw new IllegalStateException("Party is not open");
+            throw new BadRequestException("Party is not open");
         }
 
         String memberName = request.memberName().trim();
@@ -48,13 +51,13 @@ public class PartyService {
             return DtoMappers.toMemberResponse(saved);
         } catch (DataIntegrityViolationException e) {
             // unique(party_id, member_name) triggered
-            throw new IllegalStateException("Party member already exists");
+            throw new ConflictException("Party member already exists");
         }
     }
 
     @Transactional(readOnly = true)
     public PartyResponse getParty(long partyId) {
-        Party party = partyRepository.findById(partyId).orElseThrow(() -> new IllegalArgumentException("Party not found"));
+        Party party = partyRepository.findById(partyId).orElseThrow(() -> new NotFoundException("Party not found: " + partyId));
 
         List<PartyMember> members = partyMemberRepository.findByPartyId(partyId);
         return DtoMappers.toPartyResponse(party, members);
