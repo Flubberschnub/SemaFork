@@ -16,7 +16,6 @@ import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 @Service
 public class VotingService {
@@ -26,7 +25,7 @@ public class VotingService {
     private final SuggestionRepository suggestionRepository;
     private final VoteRepository voteRepository;
 
-    private int maxVotesPerMember = 1;
+    private final int maxVotesPerMember = 1;
 
     public VotingService(PartyRepository partyRepository,
                          PartyMemberRepository partyMemberRepository,

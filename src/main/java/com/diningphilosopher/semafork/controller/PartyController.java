@@ -10,7 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/party")
+@RequestMapping("/api/parties")
 public class PartyController {
     private final PartyService partyService;
 
