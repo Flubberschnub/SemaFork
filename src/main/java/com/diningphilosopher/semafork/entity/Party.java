@@ -26,6 +26,10 @@ public class Party {
     @OneToMany(mappedBy = "party", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PartyMember> members = new ArrayList<>();
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "winner_suggestion_id")
+    private Suggestion winnerSuggestion;
+
     protected Party() {
     }
 
@@ -53,6 +57,14 @@ public class Party {
 
     public List<PartyMember> getMembers() {
         return members;
+    }
+
+    public Suggestion getWinnerSuggestion() {
+        return winnerSuggestion;
+    }
+
+    public void setWinnerSuggestion(Suggestion winnerSuggestion) {
+        this.winnerSuggestion = winnerSuggestion;
     }
 
     public void setName(String name) {
