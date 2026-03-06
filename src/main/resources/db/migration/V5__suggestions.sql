@@ -1,0 +1,7 @@
+CREATE TABLE suggestion (
+    id BIGSERIAL PRIMARY KEY,
+    party_id BIGINT NOT NULL REFERENCES party(id) ON DELETE CASCADE,
+    member_id BIGINT NOT NULL REFERENCES party_member(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
