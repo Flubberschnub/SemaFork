@@ -19,4 +19,6 @@ public interface VoteRepository extends JpaRepository<Vote, Long> {
         ORDER BY count DESC
     """)
     List<Object[]> countVotesBySuggestions(@Param("partyId") Long partyId);
+
+    long countByPartyIdAndMemberId(Long partyId, Long memberId);
 }

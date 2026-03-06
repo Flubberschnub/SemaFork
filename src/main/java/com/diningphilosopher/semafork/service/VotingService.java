@@ -26,6 +26,8 @@ public class VotingService {
     private final SuggestionRepository suggestionRepository;
     private final VoteRepository voteRepository;
 
+    private int maxVotesPerMember = 1;
+
     public VotingService(PartyRepository partyRepository,
                          PartyMemberRepository partyMemberRepository,
                          SuggestionRepository suggestionRepository,
@@ -69,6 +71,11 @@ public class VotingService {
 
         if (!suggestion.getParty().getId().equals(party.getId())) {
             throw new BadRequestException("Suggestion does not belong to the party");
+        }
+
+        long memberVotes = voteRepository.countByPartyIdAndMemberId(partyId, member.getId());
+        if (memberVotes >= maxVotesPerMember) {
+            throw new BadRequestException("Member has already voted");
         }
 
         Vote vote = new Vote(party, member, suggestion, OffsetDateTime.now());
