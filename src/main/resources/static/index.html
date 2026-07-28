@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Create a group, suggest places to eat, and vote on the winner.">
+    <title>Semafork</title>
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/app.js" defer></script>
+</head>
+<body>
+<header class="site-header">
+    <a class="brand" href="/" aria-label="Semafork home">
+        <span class="brand-mark">S</span>
+        <span>Semafork</span>
+    </a>
+    <span class="tagline">Decide where to eat, together.</span>
+</header>
+
+<main id="app" class="app-shell" aria-live="polite">
+    <section class="card loading-card">
+        <div class="spinner" aria-hidden="true"></div>
+        <p>Loading Semafork…</p>
+    </section>
+</main>
+
+<footer>
+    Simple group dining decisions. No account required.
+</footer>
+</body>
+</html>

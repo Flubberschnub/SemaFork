@@ -22,7 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Testcontainers
 @SpringBootTest
 @AutoConfigureMockMvc
-public class PartyFlowIntegrationTest {
+class PartyFlowIntegrationTest {
 
     @Container
     @ServiceConnection
@@ -38,123 +38,149 @@ public class PartyFlowIntegrationTest {
     private JsonMapper jsonMapper;
 
     @Test
-    void fullPartyVotingFlow_shouldFinalizeWinner() throws Exception {
-        String createPartyResponse = mockMvc.perform(post("/api/parties")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                    "name": "Lunch Crew"
-                                }
-                                """))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+    void completePartyFlowAutomaticallyFinalizesWhenEveryoneVotes() throws Exception {
+        PartySession host = createParty("Lunch Crew", "Kevin");
+        MemberSession alex = joinParty(host.joinCode(), "Alex");
 
-        JsonNode partyJson = jsonMapper.readTree(createPartyResponse);
-        long partyId = partyJson.get("id").asLong();
+        long cavaId = addSuggestion(host.partyId(), host.memberToken(), "Cava");
+        addSuggestion(host.partyId(), alex.memberToken(), "Hatsuyuki");
 
-        String joinKevinResponse = mockMvc.perform(post("/api/parties/{partyId}/members", partyId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                "memberName": "Kevin"
-                                }
-                                """))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        JsonNode kevinJson = jsonMapper.readTree(joinKevinResponse);
-        long kevinId = kevinJson.get("id").asLong();
-
-        String joinAlexResponse = mockMvc.perform(post("/api/parties/{partyId}/members", partyId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                "memberName": "Alex"
-                                }
-                                """))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        JsonNode alexJson = jsonMapper.readTree(joinAlexResponse);
-        long alexId = alexJson.get("id").asLong();
-
-        String cavaResponse = mockMvc.perform(post("/api/parties/{partyId}/suggestions", partyId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(String.format("""
-                                {
-                                "memberId": %d,
-                                "name": "Cava"
-                                }
-                                """, kevinId)))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        JsonNode cavaJson = jsonMapper.readTree(cavaResponse);
-        long cavaId = cavaJson.get("id").asLong();
-
-        String hatsuyukiResponse = mockMvc.perform(post("/api/parties/{partyId}/suggestions", partyId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(String.format("""
-                                {
-                                "memberId": %d,
-                                "name": "Hatsuyuki"
-                                }
-                                """, alexId)))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        JsonNode hatsuyukiJson = jsonMapper.readTree(hatsuyukiResponse);
-        long hatsuyukiId = hatsuyukiJson.get("id").asLong();
-
-        mockMvc.perform(post("/api/parties/{partyId}/voting/start-voting", partyId))
-                .andExpect(status().isNoContent());
-
-        mockMvc.perform(post("/api/parties/{partyId}/voting/votes", partyId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(String.format("""
-                                {
-                                "memberId": %d,
-                                "suggestionId": %d
-                                }
-                                """, kevinId, cavaId)))
+        startVoting(host.partyId(), host.hostToken());
+        castVote(host.partyId(), host.memberToken(), cavaId)
+                .andExpect(status().isCreated());
+        castVote(host.partyId(), alex.memberToken(), cavaId)
                 .andExpect(status().isCreated());
 
-        mockMvc.perform(post("/api/parties/{partyId}/voting/votes", partyId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(String.format("""
-                                {
-                                "memberId": %d,
-                                "suggestionId": %d
-                                }
-                                """, alexId, cavaId)))
-                .andExpect(status().isCreated());
-
-        String resultsResponse = mockMvc.perform(get("/api/parties/{partyId}/voting", partyId))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        JsonNode resultsJson = jsonMapper.readTree(resultsResponse);
-
-        assertEquals(partyId, resultsJson.get("partyId").asLong());
-        assertEquals("FINALIZED", resultsJson.get("status").asString(""));
-        assertNotNull(resultsJson.get("winnerSuggestionId"));
-        assertEquals(cavaId, resultsJson.get("winnerSuggestionId").asLong());
-        assertEquals("Cava", resultsJson.get("winnerSuggestionName").asString(""));
-
-        JsonNode countsNode = resultsJson.get("counts");
-        assertEquals(2L, countsNode.get(String.valueOf(cavaId)).asLong());
+        JsonNode results = getResults(host.partyId());
+        assertEquals("FINALIZED", results.get("status").asString());
+        assertEquals(cavaId, results.get("winnerSuggestionId").asLong());
+        assertEquals("Cava", results.get("winnerSuggestionName").asString());
+        assertEquals(2L, results.get("counts").get(String.valueOf(cavaId)).asLong());
     }
 
+    @Test
+    void hostCanFinalizeWithCurrentVotesWhenSomeoneIsUnavailable() throws Exception {
+        PartySession host = createParty("Dinner", "Host");
+        joinParty(host.joinCode(), "Unavailable friend");
+
+        long firstId = addSuggestion(host.partyId(), host.memberToken(), "First place");
+        addSuggestion(host.partyId(), host.memberToken(), "Second place");
+        startVoting(host.partyId(), host.hostToken());
+        castVote(host.partyId(), host.memberToken(), firstId)
+                .andExpect(status().isCreated());
+
+        JsonNode inProgress = getResults(host.partyId());
+        assertEquals("VOTING", inProgress.get("status").asString());
+        assertEquals(0, inProgress.get("counts").size());
+
+        mockMvc.perform(post("/api/parties/{partyId}/voting/finalize", host.partyId())
+                        .header("X-Host-Token", host.hostToken()))
+                .andExpect(status().isNoContent());
+
+        JsonNode finalized = getResults(host.partyId());
+        assertEquals("FINALIZED", finalized.get("status").asString());
+        assertEquals(firstId, finalized.get("winnerSuggestionId").asLong());
+    }
+
+    @Test
+    void authorizationAndDatabaseRulesProtectTheVotingFlow() throws Exception {
+        PartySession host = createParty("Protected party", "Host");
+        MemberSession guest = joinParty(host.joinCode(), "Guest");
+
+        addSuggestion(host.partyId(), host.memberToken(), "Only one");
+
+        mockMvc.perform(post("/api/parties/{partyId}/voting/start", host.partyId())
+                        .header("X-Host-Token", "not-the-host"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/api/parties/{partyId}/voting/start", host.partyId())
+                        .header("X-Host-Token", host.hostToken()))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(post("/api/parties/{partyId}/suggestions", host.partyId())
+                        .header("X-Member-Token", host.memberToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":" only one "}
+                                """))
+                .andExpect(status().isConflict());
+
+        long secondId = addSuggestion(host.partyId(), guest.memberToken(), "Second option");
+        startVoting(host.partyId(), host.hostToken());
+
+        castVote(host.partyId(), host.memberToken(), secondId)
+                .andExpect(status().isCreated());
+        castVote(host.partyId(), host.memberToken(), secondId)
+                .andExpect(status().isConflict());
+    }
+
+    private PartySession createParty(String partyName, String hostName) throws Exception {
+        String response = mockMvc.perform(post("/api/parties")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(new CreateRequest(partyName, hostName))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        JsonNode json = jsonMapper.readTree(response);
+        assertNotNull(json.get("hostToken"));
+        assertNotNull(json.get("memberToken"));
+        return new PartySession(
+                json.get("partyId").asLong(),
+                json.get("joinCode").asString(),
+                json.get("hostToken").asString(),
+                json.get("memberToken").asString()
+        );
+    }
+
+    private MemberSession joinParty(String joinCode, String memberName) throws Exception {
+        String response = mockMvc.perform(post("/api/parties/join")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(new JoinRequest(joinCode, memberName))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        JsonNode json = jsonMapper.readTree(response);
+        return new MemberSession(json.get("memberId").asLong(), json.get("memberToken").asString());
+    }
+
+    private long addSuggestion(long partyId, String memberToken, String name) throws Exception {
+        String response = mockMvc.perform(post("/api/parties/{partyId}/suggestions", partyId)
+                        .header("X-Member-Token", memberToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(new SuggestionRequest(name))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return jsonMapper.readTree(response).get("id").asLong();
+    }
+
+    private void startVoting(long partyId, String hostToken) throws Exception {
+        mockMvc.perform(post("/api/parties/{partyId}/voting/start", partyId)
+                        .header("X-Host-Token", hostToken))
+                .andExpect(status().isNoContent());
+    }
+
+    private org.springframework.test.web.servlet.ResultActions castVote(
+            long partyId,
+            String memberToken,
+            long suggestionId
+    ) throws Exception {
+        return mockMvc.perform(post("/api/parties/{partyId}/voting/votes", partyId)
+                .header("X-Member-Token", memberToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(new VoteRequest(suggestionId))));
+    }
+
+    private JsonNode getResults(long partyId) throws Exception {
+        String response = mockMvc.perform(get("/api/parties/{partyId}/voting", partyId))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return jsonMapper.readTree(response);
+    }
+
+    private record PartySession(long partyId, String joinCode, String hostToken, String memberToken) {}
+    private record MemberSession(long memberId, String memberToken) {}
+    private record CreateRequest(String name, String hostName) {}
+    private record JoinRequest(String joinCode, String memberName) {}
+    private record SuggestionRequest(String name) {}
+    private record VoteRequest(long suggestionId) {}
 }

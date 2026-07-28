@@ -1,6 +1,8 @@
 package com.diningphilosopher.semafork.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,45 +17,54 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+    private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
+
     @ExceptionHandler(NotFoundException.class)
-    public ResponseEntity<ApiError> handleNotFound(NotFoundException ex, HttpServletRequest req){
-        return build(HttpStatus.NOT_FOUND, ex.getMessage(), req.getRequestURI(), null);
+    public ResponseEntity<ApiError> handleNotFound(NotFoundException ex, HttpServletRequest request) {
+        return build(HttpStatus.NOT_FOUND, ex.getMessage(), request.getRequestURI(), null);
+    }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<ApiError> handleUnauthorized(UnauthorizedException ex, HttpServletRequest request) {
+        return build(HttpStatus.UNAUTHORIZED, ex.getMessage(), request.getRequestURI(), null);
     }
 
     @ExceptionHandler(ConflictException.class)
-    public ResponseEntity<ApiError> handleConflict(ConflictException ex, HttpServletRequest req){
-        return build(HttpStatus.CONFLICT, ex.getMessage(), req.getRequestURI(), null);
+    public ResponseEntity<ApiError> handleConflict(ConflictException ex, HttpServletRequest request) {
+        return build(HttpStatus.CONFLICT, ex.getMessage(), request.getRequestURI(), null);
     }
 
     @ExceptionHandler(BadRequestException.class)
-    public ResponseEntity<ApiError> handleBadRequest(BadRequestException ex, HttpServletRequest req){
-        return build(HttpStatus.BAD_REQUEST, ex.getMessage(), req.getRequestURI(), null);
+    public ResponseEntity<ApiError> handleBadRequest(BadRequestException ex, HttpServletRequest request) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request.getRequestURI(), null);
     }
 
-    // Bean validation failures from @Valid @RequestBody
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest req){
+    public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
         Map<String, String> fieldErrors = new LinkedHashMap<>();
-        for (FieldError fe : ex.getBindingResult().getFieldErrors()) {
-            // If multiple constraints fail on the same field, keep the first message
-            fieldErrors.putIfAbsent(fe.getField(), fe.getDefaultMessage());
+        for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
+            fieldErrors.putIfAbsent(fieldError.getField(), fieldError.getDefaultMessage());
         }
-        return build(HttpStatus.BAD_REQUEST, fieldErrors.toString(), req.getRequestURI(), fieldErrors);
+        return build(HttpStatus.BAD_REQUEST, "Request validation failed", request.getRequestURI(), fieldErrors);
     }
 
-    // Optional: a catch for DB constraing violations I didn't map explicitly
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<ApiError> handleDataIntegrity(DataIntegrityViolationException ex, HttpServletRequest req){
-        return build(HttpStatus.BAD_REQUEST, "Database constraint violation", req.getRequestURI(), null);
+    public ResponseEntity<ApiError> handleDataIntegrity(DataIntegrityViolationException ex, HttpServletRequest request) {
+        return build(HttpStatus.CONFLICT, "The request conflicts with existing data", request.getRequestURI(), null);
     }
 
-    // Fallback
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiError> handleException(Exception ex, HttpServletRequest req){
-        return build(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error", req.getRequestURI(), null);
+    public ResponseEntity<ApiError> handleException(Exception ex, HttpServletRequest request) {
+        log.error("Unexpected request failure for {}", request.getRequestURI(), ex);
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error", request.getRequestURI(), null);
     }
 
-    private ResponseEntity<ApiError> build(HttpStatus status, String message, String path, Map<String, String> fieldErrors){
+    private ResponseEntity<ApiError> build(
+            HttpStatus status,
+            String message,
+            String path,
+            Map<String, String> fieldErrors
+    ) {
         ApiError body = new ApiError(
                 OffsetDateTime.now(),
                 status.value(),

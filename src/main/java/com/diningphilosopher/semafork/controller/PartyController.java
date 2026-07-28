@@ -1,9 +1,6 @@
 package com.diningphilosopher.semafork.controller;
 
-import com.diningphilosopher.semafork.dto.party.CreatePartyRequest;
-import com.diningphilosopher.semafork.dto.party.JoinPartyRequest;
-import com.diningphilosopher.semafork.dto.party.MemberResponse;
-import com.diningphilosopher.semafork.dto.party.PartyResponse;
+import com.diningphilosopher.semafork.dto.party.*;
 import com.diningphilosopher.semafork.service.PartyService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -18,24 +15,23 @@ public class PartyController {
         this.partyService = partyService;
     }
 
-    // Create a party
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public PartyResponse createParty(@Valid @RequestBody CreatePartyRequest request) {
+    public CreatePartyResponse createParty(@Valid @RequestBody CreatePartyRequest request) {
         return partyService.createParty(request);
     }
 
-    // Join a party
-    @PostMapping("/{partyId}/members")
+    @PostMapping("/join")
     @ResponseStatus(HttpStatus.CREATED)
-    public MemberResponse joinParty(
-            @PathVariable long partyId,
-            @Valid @RequestBody JoinPartyRequest request
-    ) {
-        return partyService.joinParty(partyId, request);
+    public JoinPartyResponse joinParty(@Valid @RequestBody JoinPartyRequest request) {
+        return partyService.joinParty(request);
     }
 
-    // Get party details
+    @GetMapping("/code/{joinCode}")
+    public PartyResponse getPartyByJoinCode(@PathVariable String joinCode) {
+        return partyService.getPartyByJoinCode(joinCode);
+    }
+
     @GetMapping("/{partyId}")
     public PartyResponse getParty(@PathVariable long partyId) {
         return partyService.getParty(partyId);

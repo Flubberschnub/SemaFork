@@ -22,9 +22,10 @@ public class SuggestionController {
     @ResponseStatus(HttpStatus.CREATED)
     public SuggestionResponse addSuggestion(
             @PathVariable long partyId,
+            @RequestHeader("X-Member-Token") String memberToken,
             @Valid @RequestBody CreateSuggestionRequest request
     ) {
-        return suggestionService.addSuggestion(partyId, request);
+        return suggestionService.addSuggestion(partyId, memberToken, request);
     }
 
     @GetMapping
