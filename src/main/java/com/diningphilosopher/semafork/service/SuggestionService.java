@@ -61,7 +61,7 @@ public class SuggestionService {
         );
 
         try {
-            return DtoMappers.toSuggestionResponse(suggestionRepository.save(suggestion));
+            return DtoMappers.toSuggestionResponse(suggestionRepository.saveAndFlush(suggestion));
         } catch (DataIntegrityViolationException ex) {
             throw new ConflictException("That suggestion is already in this party");
         }
