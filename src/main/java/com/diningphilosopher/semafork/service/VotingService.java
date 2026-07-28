@@ -4,18 +4,23 @@ import com.diningphilosopher.semafork.dto.vote.CastVoteRequest;
 import com.diningphilosopher.semafork.dto.vote.VoteResultResponse;
 import com.diningphilosopher.semafork.entity.*;
 import com.diningphilosopher.semafork.exception.BadRequestException;
+import com.diningphilosopher.semafork.exception.ConflictException;
 import com.diningphilosopher.semafork.exception.NotFoundException;
+import com.diningphilosopher.semafork.exception.UnauthorizedException;
 import com.diningphilosopher.semafork.repository.PartyMemberRepository;
 import com.diningphilosopher.semafork.repository.PartyRepository;
 import com.diningphilosopher.semafork.repository.SuggestionRepository;
 import com.diningphilosopher.semafork.repository.VoteRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 public class VotingService {
@@ -25,12 +30,12 @@ public class VotingService {
     private final SuggestionRepository suggestionRepository;
     private final VoteRepository voteRepository;
 
-    private final int maxVotesPerMember = 1;
-
-    public VotingService(PartyRepository partyRepository,
-                         PartyMemberRepository partyMemberRepository,
-                         SuggestionRepository suggestionRepository,
-                         VoteRepository voteRepository) {
+    public VotingService(
+            PartyRepository partyRepository,
+            PartyMemberRepository partyMemberRepository,
+            SuggestionRepository suggestionRepository,
+            VoteRepository voteRepository
+    ) {
         this.partyRepository = partyRepository;
         this.partyMemberRepository = partyMemberRepository;
         this.suggestionRepository = suggestionRepository;
@@ -38,78 +43,89 @@ public class VotingService {
     }
 
     @Transactional
-    public void startVoting(long partyId) {
-        Party party = partyRepository.findById(partyId)
-                .orElseThrow(() -> new NotFoundException("Party not found: " + partyId));
+    public void startVoting(long partyId, String hostToken) {
+        Party party = requireParty(partyId);
+        requireHost(party, hostToken);
 
         if (party.getStatus() != PartyStatus.OPEN) {
-            throw new BadRequestException("Party is not open");
+            throw new BadRequestException("Party is not open for suggestions");
+        }
+        if (suggestionRepository.countByPartyId(partyId) < 2) {
+            throw new BadRequestException("Add at least two suggestions before voting");
         }
 
         party.setStatus(PartyStatus.VOTING);
     }
 
     @Transactional
-    public void castVote(long partyId, CastVoteRequest request) {
-        Party party = partyRepository.findById(partyId)
-                .orElseThrow(() -> new NotFoundException("Party not found: " + partyId));
-
+    public void castVote(long partyId, String memberToken, CastVoteRequest request) {
+        Party party = requireParty(partyId);
         if (party.getStatus() != PartyStatus.VOTING) {
-            throw new BadRequestException("Party is not in voting phase");
+            throw new BadRequestException("Party is not in the voting phase");
         }
 
-        PartyMember member = partyMemberRepository.findById(request.memberId())
-                .orElseThrow(() -> new NotFoundException("Party member not found: " + request.memberId()));
-
-        if (!(member.getParty().getId().equals(party.getId()))) {
-            throw new BadRequestException("Party member does not belong to the party");
-        }
+        PartyMember member = partyMemberRepository.findByPartyIdAndMemberToken(partyId, memberToken)
+                .orElseThrow(() -> new UnauthorizedException("Invalid participant session"));
 
         Suggestion suggestion = suggestionRepository.findById(request.suggestionId())
-                .orElseThrow(() -> new NotFoundException("Suggestion not found: " + request.suggestionId()));
-
-        if (!suggestion.getParty().getId().equals(party.getId())) {
-            throw new BadRequestException("Suggestion does not belong to the party");
+                .orElseThrow(() -> new NotFoundException("Suggestion not found"));
+        if (!suggestion.getParty().getId().equals(partyId)) {
+            throw new BadRequestException("Suggestion does not belong to this party");
         }
 
-        long memberVotes = voteRepository.countByPartyIdAndMemberId(partyId, member.getId());
-        if (memberVotes >= maxVotesPerMember) {
-            throw new BadRequestException("Member has already voted");
+        if (voteRepository.existsByPartyIdAndMemberId(partyId, member.getId())) {
+            throw new ConflictException("You have already voted");
         }
 
-        Vote vote = new Vote(party, member, suggestion, OffsetDateTime.now());
+        try {
+            voteRepository.saveAndFlush(new Vote(party, member, suggestion, OffsetDateTime.now()));
+        } catch (DataIntegrityViolationException ex) {
+            throw new ConflictException("You have already voted");
+        }
 
-        voteRepository.save(vote);
-
-        long memberCount = party.getMembers().size();
+        long memberCount = partyMemberRepository.countByPartyId(partyId);
         long voteCount = voteRepository.countByPartyId(partyId);
-
         if (memberCount > 0 && voteCount >= memberCount) {
             finalizeWinner(party);
         }
     }
 
+    @Transactional
+    public void finalizeVoting(long partyId, String hostToken) {
+        Party party = requireParty(partyId);
+        requireHost(party, hostToken);
+
+        if (party.getStatus() != PartyStatus.VOTING) {
+            throw new BadRequestException("Party is not in the voting phase");
+        }
+        if (voteRepository.countByPartyId(partyId) == 0) {
+            throw new BadRequestException("At least one vote is required");
+        }
+
+        finalizeWinner(party);
+    }
+
     private void finalizeWinner(Party party) {
         List<Object[]> counts = voteRepository.countVotesBySuggestions(party.getId());
-
         if (counts.isEmpty()) {
-            throw new BadRequestException("No votes found");
+            throw new BadRequestException("At least one vote is required");
         }
 
-        // Winner = top count, Tie break: lowest suggestionId (simple determinism for now)
-        long bestSuggestionId = -1;
-        long bestCount = -1;
+        long bestCount = ((Number) counts.getFirst()[1]).longValue();
+        List<Long> tiedSuggestionIds = new ArrayList<>();
         for (Object[] row : counts) {
-            long suggestionId = (Long) row[0];
-            long count = (Long) row[1];
-            if (count > bestCount || (count == bestCount && suggestionId < bestSuggestionId)) {
-                bestCount = count;
-                bestSuggestionId = suggestionId;
+            long count = ((Number) row[1]).longValue();
+            if (count != bestCount) {
+                break;
             }
+            tiedSuggestionIds.add(((Number) row[0]).longValue());
         }
 
-        Suggestion winner = suggestionRepository.findById(bestSuggestionId)
-                .orElseThrow(() -> new NotFoundException("Winner suggestion not found"));
+        long winnerId = tiedSuggestionIds.get(
+                ThreadLocalRandom.current().nextInt(tiedSuggestionIds.size())
+        );
+        Suggestion winner = suggestionRepository.findById(winnerId)
+                .orElseThrow(() -> new NotFoundException("Winning suggestion not found"));
 
         party.setWinnerSuggestion(winner);
         party.setStatus(PartyStatus.FINALIZED);
@@ -117,12 +133,13 @@ public class VotingService {
 
     @Transactional(readOnly = true)
     public VoteResultResponse getResults(long partyId) {
-        Party party = partyRepository.findById(partyId)
-                .orElseThrow(() -> new NotFoundException("Party not found: " + partyId));
+        Party party = requireParty(partyId);
+        Map<Long, Long> counts = new LinkedHashMap<>();
 
-        Map<Long, Long> countsMap = new LinkedHashMap<>();
-        for (Object[] row : voteRepository.countVotesBySuggestions(partyId)) {
-            countsMap.put((Long) row[0], (Long) row[1]);
+        if (party.getStatus() == PartyStatus.FINALIZED) {
+            for (Object[] row : voteRepository.countVotesBySuggestions(partyId)) {
+                counts.put(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
+            }
         }
 
         Suggestion winner = party.getWinnerSuggestion();
@@ -131,8 +148,18 @@ public class VotingService {
                 party.getStatus().name(),
                 winner == null ? null : winner.getId(),
                 winner == null ? null : winner.getName(),
-                countsMap
+                counts
         );
     }
 
+    private Party requireParty(long partyId) {
+        return partyRepository.findById(partyId)
+                .orElseThrow(() -> new NotFoundException("Party not found"));
+    }
+
+    private void requireHost(Party party, String hostToken) {
+        if (!party.getHostToken().equals(hostToken)) {
+            throw new UnauthorizedException("Invalid host session");
+        }
+    }
 }
