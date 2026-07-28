@@ -7,5 +7,5 @@ import java.util.List;
 
 public interface SuggestionRepository extends JpaRepository<Suggestion, Long> {
     List<Suggestion> findAllByPartyIdOrderByCreatedAtAsc(Long partyId);
-    List<Suggestion> findAllByMemberIdOrderByCreatedAtAsc(Long memberId);
+    long countByPartyId(Long partyId);
 }
