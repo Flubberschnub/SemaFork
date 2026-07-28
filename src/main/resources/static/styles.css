@@ -1,0 +1,365 @@
+:root {
+    color-scheme: light;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --bg: #f6f3ee;
+    --surface: #ffffff;
+    --text: #20211f;
+    --muted: #6d706a;
+    --border: #dedbd4;
+    --primary: #2f6a4f;
+    --primary-dark: #24533e;
+    --danger: #a33d34;
+    --soft: #edf4ef;
+    --shadow: 0 18px 50px rgba(37, 43, 38, 0.08);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    min-height: 100vh;
+    margin: 0;
+    background: radial-gradient(circle at top, #fffdf8 0, var(--bg) 45rem);
+    color: var(--text);
+}
+
+button,
+input {
+    font: inherit;
+}
+
+button {
+    cursor: pointer;
+}
+
+.site-header,
+footer,
+.app-shell {
+    width: min(100% - 2rem, 70rem);
+    margin-inline: auto;
+}
+
+.site-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.35rem 0;
+}
+
+.brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    color: var(--text);
+    font-size: 1.15rem;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.brand-mark {
+    display: grid;
+    width: 2.1rem;
+    height: 2.1rem;
+    place-items: center;
+    border-radius: 0.75rem;
+    background: var(--primary);
+    color: white;
+}
+
+.tagline,
+.muted,
+.help,
+footer {
+    color: var(--muted);
+}
+
+.app-shell {
+    min-height: calc(100vh - 10rem);
+    padding: 1rem 0 3rem;
+}
+
+.hero {
+    padding: 3rem 0 1.5rem;
+    text-align: center;
+}
+
+.hero h1 {
+    max-width: 12ch;
+    margin: 0 auto 1rem;
+    font-size: clamp(2.4rem, 8vw, 4.7rem);
+    line-height: 0.98;
+    letter-spacing: -0.055em;
+}
+
+.hero p {
+    max-width: 38rem;
+    margin: 0 auto;
+    color: var(--muted);
+    font-size: 1.08rem;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.party-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(17rem, 0.7fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+.stack {
+    display: grid;
+    gap: 1rem;
+}
+
+.card {
+    border: 1px solid var(--border);
+    border-radius: 1.2rem;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: var(--shadow);
+    padding: clamp(1.1rem, 3vw, 1.6rem);
+}
+
+.card h2,
+.card h3,
+.card p {
+    margin-top: 0;
+}
+
+.card h2 {
+    margin-bottom: 0.5rem;
+    font-size: 1.35rem;
+}
+
+.party-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.party-heading h1 {
+    margin: 0;
+    font-size: clamp(1.8rem, 5vw, 2.8rem);
+    letter-spacing: -0.035em;
+}
+
+.code {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-top: 0.6rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+}
+
+.status {
+    display: inline-flex;
+    border-radius: 999px;
+    background: var(--soft);
+    color: var(--primary-dark);
+    padding: 0.4rem 0.75rem;
+    font-size: 0.82rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+form {
+    display: grid;
+    gap: 0.85rem;
+}
+
+label {
+    display: grid;
+    gap: 0.4rem;
+    font-weight: 700;
+}
+
+input {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 0.8rem;
+    background: white;
+    color: var(--text);
+    padding: 0.82rem 0.9rem;
+    outline: none;
+}
+
+input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(47, 106, 79, 0.13);
+}
+
+.button-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+}
+
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    border: 0;
+    border-radius: 0.8rem;
+    background: var(--primary);
+    color: white;
+    padding: 0.7rem 1rem;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.button:hover {
+    background: var(--primary-dark);
+}
+
+.button.secondary {
+    border: 1px solid var(--border);
+    background: white;
+    color: var(--text);
+}
+
+.button.danger {
+    background: var(--danger);
+}
+
+.button:disabled {
+    cursor: not-allowed;
+    opacity: 0.48;
+}
+
+.list {
+    display: grid;
+    gap: 0.65rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.list-item,
+.vote-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 0.9rem;
+    background: white;
+    padding: 0.85rem 0.95rem;
+}
+
+.vote-option {
+    width: 100%;
+    text-align: left;
+}
+
+.vote-option:hover {
+    border-color: var(--primary);
+    background: var(--soft);
+}
+
+.vote-option strong,
+.list-item strong {
+    display: block;
+}
+
+.vote-count {
+    flex: 0 0 auto;
+    font-weight: 800;
+}
+
+.notice,
+.error {
+    border-radius: 0.85rem;
+    padding: 0.85rem 0.95rem;
+}
+
+.notice {
+    background: var(--soft);
+    color: var(--primary-dark);
+}
+
+.error {
+    background: #f9e9e6;
+    color: #7d2e28;
+}
+
+.winner {
+    padding: 1.6rem;
+    border-radius: 1rem;
+    background: var(--primary);
+    color: white;
+    text-align: center;
+}
+
+.winner span {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 0.85rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.8;
+}
+
+.winner strong {
+    font-size: clamp(1.7rem, 6vw, 2.8rem);
+}
+
+.loading-card {
+    display: grid;
+    min-height: 14rem;
+    place-items: center;
+    text-align: center;
+}
+
+.spinner {
+    width: 2rem;
+    height: 2rem;
+    border: 3px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+footer {
+    padding: 1.5rem 0 2rem;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (max-width: 760px) {
+    .grid,
+    .party-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .tagline {
+        display: none;
+    }
+
+    .hero {
+        padding-top: 1.5rem;
+    }
+
+    .party-heading {
+        display: grid;
+    }
+
+    .button-row .button {
+        flex: 1 1 auto;
+    }
+}
