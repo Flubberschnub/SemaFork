@@ -76,7 +76,7 @@ public class PartyService {
         }
 
         try {
-            PartyMember member = partyMemberRepository.save(new PartyMember(
+            PartyMember member = partyMemberRepository.saveAndFlush(new PartyMember(
                     party,
                     request.memberName().trim(),
                     generateToken(),
