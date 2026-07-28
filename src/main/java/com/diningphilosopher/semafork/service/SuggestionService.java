@@ -10,6 +10,7 @@ import com.diningphilosopher.semafork.entity.Suggestion;
 import com.diningphilosopher.semafork.exception.BadRequestException;
 import com.diningphilosopher.semafork.exception.ConflictException;
 import com.diningphilosopher.semafork.exception.NotFoundException;
+import com.diningphilosopher.semafork.exception.UnauthorizedException;
 import com.diningphilosopher.semafork.repository.PartyMemberRepository;
 import com.diningphilosopher.semafork.repository.PartyRepository;
 import com.diningphilosopher.semafork.repository.SuggestionRepository;
@@ -26,29 +27,31 @@ public class SuggestionService {
     private final PartyMemberRepository partyMemberRepository;
     private final SuggestionRepository suggestionRepository;
 
-    public SuggestionService(PartyRepository partyRepository,
-                             PartyMemberRepository partyMemberRepository,
-                             SuggestionRepository suggestionRepository) {
+    public SuggestionService(
+            PartyRepository partyRepository,
+            PartyMemberRepository partyMemberRepository,
+            SuggestionRepository suggestionRepository
+    ) {
         this.partyRepository = partyRepository;
         this.partyMemberRepository = partyMemberRepository;
         this.suggestionRepository = suggestionRepository;
     }
 
     @Transactional
-    public SuggestionResponse addSuggestion(long partyId, CreateSuggestionRequest request) {
+    public SuggestionResponse addSuggestion(
+            long partyId,
+            String memberToken,
+            CreateSuggestionRequest request
+    ) {
         Party party = partyRepository.findById(partyId)
-                .orElseThrow(() -> new NotFoundException("Party not found: " + partyId));
+                .orElseThrow(() -> new NotFoundException("Party not found"));
 
         if (party.getStatus() != PartyStatus.OPEN) {
-            throw new BadRequestException("Party is not open");
+            throw new BadRequestException("Suggestions are closed");
         }
 
-        PartyMember member = partyMemberRepository.findById(request.memberId())
-                .orElseThrow(() -> new NotFoundException("Party member not found: " + request.memberId()));
-
-        if (!member.getParty().getId().equals(partyId)) {
-            throw new BadRequestException("Party member does not belong to the party");
-        }
+        PartyMember member = partyMemberRepository.findByPartyIdAndMemberToken(partyId, memberToken)
+                .orElseThrow(() -> new UnauthorizedException("Invalid participant session"));
 
         Suggestion suggestion = new Suggestion(
                 party,
@@ -58,17 +61,16 @@ public class SuggestionService {
         );
 
         try {
-            Suggestion saved = suggestionRepository.save(suggestion);
-            return DtoMappers.toSuggestionResponse(saved);
-        } catch (DataIntegrityViolationException e) {
-            throw new ConflictException("That suggestion already exists");
+            return DtoMappers.toSuggestionResponse(suggestionRepository.save(suggestion));
+        } catch (DataIntegrityViolationException ex) {
+            throw new ConflictException("That suggestion is already in this party");
         }
     }
 
     @Transactional(readOnly = true)
     public List<SuggestionResponse> getSuggestions(long partyId) {
         if (!partyRepository.existsById(partyId)) {
-            throw new NotFoundException("Party not found: " + partyId);
+            throw new NotFoundException("Party not found");
         }
 
         return suggestionRepository.findAllByPartyIdOrderByCreatedAtAsc(partyId)
