@@ -18,7 +18,14 @@ public class Party {
     private String name;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private PartyStatus status;
+
+    @Column(name = "join_code", nullable = false, unique = true, length = 8)
+    private String joinCode;
+
+    @Column(name = "host_token", nullable = false, unique = true, length = 64)
+    private String hostToken;
 
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
@@ -33,9 +40,11 @@ public class Party {
     protected Party() {
     }
 
-    public Party(String name, PartyStatus status, OffsetDateTime createdAt) {
+    public Party(String name, PartyStatus status, String joinCode, String hostToken, OffsetDateTime createdAt) {
         this.name = name;
         this.status = status;
+        this.joinCode = joinCode;
+        this.hostToken = hostToken;
         this.createdAt = createdAt;
     }
 
@@ -49,6 +58,14 @@ public class Party {
 
     public PartyStatus getStatus() {
         return status;
+    }
+
+    public String getJoinCode() {
+        return joinCode;
+    }
+
+    public String getHostToken() {
+        return hostToken;
     }
 
     public OffsetDateTime getCreatedAt() {
@@ -67,16 +84,7 @@ public class Party {
         this.winnerSuggestion = winnerSuggestion;
     }
 
-    public void setName(String name) {
-        this.name = name;
-    }
-
     public void setStatus(PartyStatus status) {
         this.status = status;
     }
-
-    public void setCreatedAt(OffsetDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
 }
