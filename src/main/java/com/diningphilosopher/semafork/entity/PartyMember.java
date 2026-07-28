@@ -11,7 +11,6 @@ import java.time.OffsetDateTime;
                 @UniqueConstraint(name = "uq_party_member_partyid_membername", columnNames = {"party_id", "member_name"})
         }
 )
-
 public class PartyMember {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,18 +20,22 @@ public class PartyMember {
     @JoinColumn(name = "party_id", nullable = false)
     private Party party;
 
-    @Column(nullable = false)
+    @Column(name = "member_name", nullable = false)
     private String memberName;
 
-    @Column(nullable = false)
+    @Column(name = "member_token", nullable = false, unique = true, length = 64)
+    private String memberToken;
+
+    @Column(name = "joined_at", nullable = false)
     private OffsetDateTime joinedAt;
 
     protected PartyMember() {
     }
 
-    public PartyMember(Party party, String memberName, OffsetDateTime joinedAt) {
+    public PartyMember(Party party, String memberName, String memberToken, OffsetDateTime joinedAt) {
         this.party = party;
         this.memberName = memberName;
+        this.memberToken = memberToken;
         this.joinedAt = joinedAt;
     }
 
@@ -48,24 +51,11 @@ public class PartyMember {
         return memberName;
     }
 
+    public String getMemberToken() {
+        return memberToken;
+    }
+
     public OffsetDateTime getJoinedAt() {
         return joinedAt;
     }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public void setParty(Party party) {
-        this.party = party;
-    }
-
-    public void setMemberName(String memberName) {
-        this.memberName = memberName;
-    }
-
-    public void setJoinedAt(OffsetDateTime joinedAt) {
-        this.joinedAt = joinedAt;
-    }
-
 }
