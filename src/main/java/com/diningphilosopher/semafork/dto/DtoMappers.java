@@ -13,17 +13,26 @@ public class DtoMappers {
     private DtoMappers() {
     }
 
-    public static MemberResponse toMemberResponse(PartyMember m) {
-        return new MemberResponse(m.getId(), m.getMemberName());
+    public static MemberResponse toMemberResponse(PartyMember member) {
+        return new MemberResponse(member.getId(), member.getMemberName());
     }
 
-    public static PartyResponse toPartyResponse(Party p, List<PartyMember> members) {
-        return new PartyResponse(p.getId(), p.getName(), p.getStatus().name(), members.stream()
-                .map(DtoMappers::toMemberResponse)
-                .toList());
+    public static PartyResponse toPartyResponse(Party party, List<PartyMember> members) {
+        return new PartyResponse(
+                party.getId(),
+                party.getName(),
+                party.getStatus().name(),
+                party.getJoinCode(),
+                members.stream().map(DtoMappers::toMemberResponse).toList()
+        );
     }
 
-    public static SuggestionResponse toSuggestionResponse(Suggestion s) {
-        return new SuggestionResponse(s.getId(), s.getMember().getId(), s.getMember().getMemberName(), s.getName());
+    public static SuggestionResponse toSuggestionResponse(Suggestion suggestion) {
+        return new SuggestionResponse(
+                suggestion.getId(),
+                suggestion.getMember().getId(),
+                suggestion.getMember().getMemberName(),
+                suggestion.getName()
+        );
     }
 }
