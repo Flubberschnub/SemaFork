@@ -17,21 +17,36 @@ public class VotingController {
         this.votingService = votingService;
     }
 
-    @PostMapping("/start-voting")
+    @PostMapping("/start")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void startVoting(@PathVariable long partyId) {
-        votingService.startVoting(partyId);
+    public void startVoting(
+            @PathVariable long partyId,
+            @RequestHeader("X-Host-Token") String hostToken
+    ) {
+        votingService.startVoting(partyId, hostToken);
     }
 
     @PostMapping("/votes")
     @ResponseStatus(HttpStatus.CREATED)
-    public void castVote(@PathVariable long partyId, @Valid @RequestBody CastVoteRequest request) {
-        votingService.castVote(partyId, request);
+    public void castVote(
+            @PathVariable long partyId,
+            @RequestHeader("X-Member-Token") String memberToken,
+            @Valid @RequestBody CastVoteRequest request
+    ) {
+        votingService.castVote(partyId, memberToken, request);
+    }
+
+    @PostMapping("/finalize")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void finalizeVoting(
+            @PathVariable long partyId,
+            @RequestHeader("X-Host-Token") String hostToken
+    ) {
+        votingService.finalizeVoting(partyId, hostToken);
     }
 
     @GetMapping
     public VoteResultResponse results(@PathVariable long partyId) {
         return votingService.getResults(partyId);
     }
-
 }
