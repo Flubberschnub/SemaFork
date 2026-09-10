@@ -4,6 +4,7 @@ public record SuggestionResponse(
         long id,
         long memberId,
         String memberName,
-        String name
+        String name,
+        String googlePlaceId
 ) {
 }

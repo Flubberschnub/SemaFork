@@ -1,0 +1,44 @@
+/* Extends the existing Semafork design without a UI framework. */
+[hidden] { display: none !important; }
+.maps-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(15rem, 1fr); gap: 1rem; align-items: start; }
+.maps-layout > *, .place-summary > * { min-width: 0; }
+.map-toolbar { display: flex; flex-wrap: wrap; gap: .6rem; margin-bottom: .8rem; }
+#place-search { width: 100%; min-width: 0; }
+gmp-place-autocomplete { width: 100%; color-scheme: light; }
+.candidate-map { height: 26rem; min-height: 18rem; border-radius: .7rem; width: 100%; }
+.map-pin { display: grid; place-items: center; width: 2.2rem; height: 2.2rem; background: var(--primary); color: white; border: 2px solid white; border-radius: 50%; box-shadow: 0 2px 7px #0005; font: 700 1rem system-ui; }
+.place-selection { border-top: 1px solid var(--border); margin-top: 1rem; padding-top: 1rem; }
+.place-selection > button { margin-top: .8rem; }
+.candidate-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.candidate-card { min-width: 0; border: 1px solid var(--border); border-radius: .8rem; padding: 1rem; background: var(--surface); }
+.candidate-card.winning-candidate { border: 2px solid var(--primary); background: var(--soft); }
+.candidate-number { font-weight: 700; color: var(--primary-dark); margin: 0 0 .65rem; }
+.place-summary { display: grid; gap: .7rem; }
+.place-summary h3 { margin: 0; }
+.place-summary p { margin: .4rem 0; overflow-wrap: anywhere; }
+.place-photo { margin: 0; min-width: 0; }
+.place-photo img { width: 100%; height: 11rem; display: block; object-fit: cover; border-radius: .6rem; }
+.place-photo figcaption { font-size: .75rem; line-height: 1.4; margin-top: .25rem; color: var(--muted); overflow-wrap: anywhere; }
+.place-photo a, .place-links a, .place-review a, .provider-attribution a { color: var(--primary-dark); }
+.photo-placeholder { display: grid; min-height: 7rem; place-items: center; border-radius: .6rem; background: var(--bg); color: var(--muted); }
+.place-facts { display: flex; align-items: center; flex-wrap: wrap; gap: .3rem; font-size: .95rem; }
+.price-level { margin-left: .35rem; border-left: 1px solid var(--border); padding-left: .6rem; }
+.provider-attribution { font-size: .8rem; color: var(--muted); }
+.google-attribution { white-space: nowrap; font-style: normal; font-weight: 400; font-size: .8rem; letter-spacing: normal; color: #5e5e5e; }
+summary { cursor: pointer; font-weight: 650; padding-block: .45rem; }
+summary:focus-visible, a:focus-visible, button:focus-visible, .candidate-card:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
+.more-place-details { margin-top: .8rem; }
+.photo-gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+.place-review { border-top: 1px solid var(--border); padding: .5rem 0; }
+.review-text { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
+#manual-card form { margin-top: .75rem; }
+#new-party { margin-top: 1.2rem; }
+footer a { color: var(--primary-dark); margin-left: .5rem; }
+@media (min-width: 1000px) { .place-selection .place-summary { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); } }
+@media (max-width: 760px) {
+    .maps-layout, .candidate-grid { grid-template-columns: minmax(0, 1fr); }
+    .candidate-map { height: 21rem; }
+    .photo-gallery { grid-template-columns: minmax(0, 1fr); }
+    .map-toolbar .button { flex: 1; font-size: .85rem; }
+    .place-photo img { height: 12rem; }
+}

@@ -27,39 +27,29 @@ public class SuggestionService {
     private final PartyMemberRepository partyMemberRepository;
     private final SuggestionRepository suggestionRepository;
 
-    public SuggestionService(
-            PartyRepository partyRepository,
-            PartyMemberRepository partyMemberRepository,
-            SuggestionRepository suggestionRepository
-    ) {
+    public SuggestionService(PartyRepository partyRepository, PartyMemberRepository partyMemberRepository,
+                             SuggestionRepository suggestionRepository) {
         this.partyRepository = partyRepository;
         this.partyMemberRepository = partyMemberRepository;
         this.suggestionRepository = suggestionRepository;
     }
 
     @Transactional
-    public SuggestionResponse addSuggestion(
-            long partyId,
-            String memberToken,
-            CreateSuggestionRequest request
-    ) {
+    public SuggestionResponse addSuggestion(long partyId, String memberToken, CreateSuggestionRequest request) {
         Party party = partyRepository.findById(partyId)
                 .orElseThrow(() -> new NotFoundException("Party not found"));
-
         if (party.getStatus() != PartyStatus.OPEN) {
             throw new BadRequestException("Suggestions are closed");
         }
-
         PartyMember member = partyMemberRepository.findByPartyIdAndMemberToken(partyId, memberToken)
                 .orElseThrow(() -> new UnauthorizedException("Invalid participant session"));
+        if (!request.isValidSource()) {
+            throw new BadRequestException("Provide either a restaurant name or a Google Place ID, not both");
+        }
 
-        Suggestion suggestion = new Suggestion(
-                party,
-                member,
-                request.name().trim(),
-                OffsetDateTime.now()
-        );
-
+        Suggestion suggestion = new Suggestion(party, member,
+                request.googlePlaceId() == null ? request.name().trim() : null, OffsetDateTime.now());
+        suggestion.setGooglePlaceId(request.googlePlaceId());
         try {
             return DtoMappers.toSuggestionResponse(suggestionRepository.saveAndFlush(suggestion));
         } catch (DataIntegrityViolationException ex) {
@@ -72,10 +62,7 @@ public class SuggestionService {
         if (!partyRepository.existsById(partyId)) {
             throw new NotFoundException("Party not found");
         }
-
         return suggestionRepository.findAllByPartyIdOrderByCreatedAtAsc(partyId)
-                .stream()
-                .map(DtoMappers::toSuggestionResponse)
-                .toList();
+                .stream().map(DtoMappers::toSuggestionResponse).toList();
     }
 }
