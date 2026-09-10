@@ -106,7 +106,7 @@ class MapsBrowserTests(unittest.TestCase):
         self.errors = []
 
     def tearDown(self):
-        # Useful rendered evidence, explicitly labeled as using a Google test double.
+        # Rendered evidence, explicitly labeled as using a Google test double.
         output = ROOT / 'test-results'
         output.mkdir(exist_ok=True)
         for index, context in enumerate(self.contexts):
@@ -118,10 +118,13 @@ class MapsBrowserTests(unittest.TestCase):
             context.close()
         self.assertEqual([], self.errors, 'Uncaught browser errors')
 
-    def page(self, host=True, width=1280):
+    def page(self, host=True, width=1280, home=False, sdk=True):
         context = self.browser.new_context(viewport={'width': width, 'height': 900})
         self.contexts.append(context)
-        context.add_init_script(path=str(ROOT / 'tests/fake-google.js'))
+        if sdk:
+            context.add_init_script(path=str(ROOT / 'tests/fake-google.js'))
+        else:
+            context.route('https://maps.googleapis.com/maps/api/js?**', lambda route: route.abort('failed'))
         if host:
             context.add_init_script("localStorage.setItem('semafork.session.ABC123', JSON.stringify({partyId:1,memberId:1,memberToken:'host-member',hostToken:'host',voted:false}));")
 
@@ -134,12 +137,15 @@ class MapsBrowserTests(unittest.TestCase):
                 route.fulfill(status=404, body='Not found')
 
         context.route(self.origin + '/**', static)
-        context.route('**/api/**', self.api.route)
+        context.route(self.origin + '/api/**', self.api.route)
         context.route('https://maps.googleapis.com/mock-photo-*.png', lambda route: route.fulfill(content_type='image/png', body=PIXEL))
         page = context.new_page()
         page.on('pageerror', lambda error: self.errors.append(str(error)))
-        page.goto(self.origin + '/?party=ABC123')
-        expect(page.locator('#party-name')).to_have_text('Dinner')
+        page.goto(self.origin + ('/' if home else '/?party=ABC123'))
+        if home:
+            expect(page.locator('#create-form')).to_be_visible()
+        else:
+            expect(page.locator('#party-name')).to_have_text('Dinner')
         return page
 
     def choose(self, page, id, poi=False):
@@ -196,6 +202,30 @@ class MapsBrowserTests(unittest.TestCase):
         expect(guest.locator('#winner-name')).to_have_text('Cava Downtown')
         expect(guest.locator('#candidate-map fake-map-marker')).to_have_count(2)
 
+    def test_home_create_and_join_forms_keep_working(self):
+        host = self.page(host=False, home=True)
+        host.locator('#create-form input[name=name]').fill('Dinner')
+        host.locator('#create-form input[name=hostName]').fill('Host')
+        host.locator('#create-form button').click()
+        expect(host.locator('#party-name')).to_have_text('Dinner')
+        self.assertEqual('host', host.evaluate("JSON.parse(localStorage.getItem('semafork.session.ABC123')).hostToken"))
+        guest = self.page(host=False, home=True)
+        guest.locator('#join-form input[name=joinCode]').fill('ABC123')
+        guest.locator('#join-form input[name=memberName]').fill('Guest')
+        guest.locator('#join-form button').click()
+        expect(guest.locator('#party-name')).to_have_text('Dinner')
+        expect(guest.locator('#join-current')).to_be_hidden()
+        expect(guest.locator('#host-controls')).to_be_hidden()
+        self.assertEqual('guest-member', guest.evaluate("JSON.parse(localStorage.getItem('semafork.session.ABC123')).memberToken"))
+
+    def test_google_script_failure_isolated_from_party_flow(self):
+        page = self.page(sdk=False)
+        expect(page.locator('#map-message')).to_contain_text('could not be reached', timeout=10000)
+        page.locator('#suggestion-form input').fill('Offline alternative')
+        page.locator('#suggestion-form button').click()
+        expect(page.locator('#candidate-1')).to_contain_text('Offline alternative')
+        expect(page.locator('#candidate-map')).to_be_hidden()
+
     def test_polling_preserves_map_search_selection_and_request_counts(self):
         self.api.seed('place_a', 'place_b')
         page = self.page()
@@ -244,7 +274,7 @@ class MapsBrowserTests(unittest.TestCase):
         expect(page.locator('#place-selection')).to_contain_text('Could not load')
         page.evaluate("window.__maps.failures.place_retry = false; window.__maps.autocomplete.choose('place_retry')")
         expect(page.locator('#place-selection')).to_contain_text('Retry Cafe')
-        page.evaluate("navigator.geolocation.getCurrentPosition = (ok, fail) => fail({code:1})")
+        page.evaluate("() => { navigator.geolocation.getCurrentPosition = (ok, fail) => fail({code:1}); }")
         page.locator('#map-locate').click()
         expect(page.locator('#map-message')).to_contain_text('denied or unavailable')
         self.assertTrue(page.evaluate('document.documentElement.scrollWidth <= innerWidth'))

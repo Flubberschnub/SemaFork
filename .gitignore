@@ -34,3 +34,8 @@ build/
 
 ### Local environment ###
 .env
+
+### Browser test output ###
+test-results/
+__pycache__/
+*.pyc

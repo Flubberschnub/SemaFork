@@ -71,7 +71,7 @@ export class RestaurantMap {
             if (!response.ok) throw new Error('Map configuration is unavailable.');
             const config = await response.json();
             if (!config.enabled || !config.browserKey) {
-                this.fail('Google Maps is not configured yet. You can still add restaurant names and vote.');
+                this.fail('Google Maps is not configured yet.');
                 return;
             }
             await loadGoogleMaps(config.browserKey);
@@ -275,11 +275,15 @@ export class RestaurantMap {
         target.textContent = 'Loading Google reviews…';
         const entry = this.entries.get(id);
         try {
-            if (!entry.reviewsPromise) entry.reviewsPromise = entry.place.fetchFields({ fields: ['reviews'] });
-            await entry.reviewsPromise;
+            // Keep the summary object stable while loading a different field mask.
+            if (!entry.reviewsPromise) {
+                const reviewPlace = new this.Place({ id });
+                entry.reviewsPromise = reviewPlace.fetchFields({ fields: ['reviews'] }).then(() => reviewPlace);
+            }
+            const reviewPlace = await entry.reviewsPromise;
             if (!details.isConnected) return;
             target.innerHTML = `<div class="photo-gallery">${(entry.place.photos || []).slice(1, 4)
-                .map(photo => photoMarkup(photo, entry.place.displayName || 'Restaurant')).join('')}</div>${reviewsMarkup(entry.place)}`;
+                .map(photo => photoMarkup(photo, entry.place.displayName || 'Restaurant')).join('')}</div>${reviewsMarkup(reviewPlace)}`;
             wirePhotoFallbacks(target);
             details.dataset.loaded = 'yes';
         } catch {
