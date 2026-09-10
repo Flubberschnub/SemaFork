@@ -32,7 +32,8 @@ public class DtoMappers {
                 suggestion.getId(),
                 suggestion.getMember().getId(),
                 suggestion.getMember().getMemberName(),
-                suggestion.getName()
+                suggestion.getName(),
+                suggestion.getGooglePlaceId()
         );
     }
 }
